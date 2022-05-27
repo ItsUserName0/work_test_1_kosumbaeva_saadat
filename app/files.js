@@ -1,52 +1,48 @@
 const express = require('express');
 const db = require('../fileDb');
-const config = require('../config');
-const buffer = require('../middleware/buffer');
+const buildFileData = require('../shared/utils/buildFileData');
 const File = require('../models/File');
 
 const router = express.Router();
 
-router.get('/:filename', async (req, res, next) => {
+router.get('/:fileId', async (req, res, next) => {
   try {
-    await db.getFile(res, config.uploadPath + '/' + req.params.filename);
+    await db.getFile(res, req.params.fileId);
   } catch (e) {
     next(e);
   }
 });
 
-router.post('/', buffer, async (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
-    const data = {
-      buffer: req.buffer,
-      mimeType: req.mimeType,
-      contentLength: req.contentLength,
-    };
+    const data = await buildFileData(req.body);
 
-    await db.addFile(data);
+    const fileData = await db.addFile(data);
 
-    return res.send({message: 'Created successful'});
+    const resAnswer = {
+      message: fileData ,
+    }
+
+    return res.send(resAnswer);
   } catch (e) {
     next(e);
   }
 });
 
-router.put('/:filename', buffer, async (req, res, next) => {
+router.put('/:fileId', async (req, res, next) => {
   try {
-    const file = await File.findOne({filename: config.uploadPath + '/' + req.params.filename});
+    // const file = await getFileData(req.params.filename);
+    const file = File.findById(req.params.fileId);
 
     if (!file) {
       return res.status(422).send({error: 'File not found!'});
     }
 
-    const data = {
-      buffer: req.buffer,
-      mimeType: req.mimeType,
-      contentLength: req.contentLength,
-    };
+    const data = await buildFileData(req.body);
 
-    await db.editFile(data, file);
+    const fileData = await db.editFile(data, file);
 
-    return res.send({message: 'Updated successful'});
+    return res.send(fileData);
   } catch (e) {
     next(e);
   }
